@@ -1,0 +1,90 @@
+<?php
+require 'vendor/autoload.php';
+
+use Ratchet\MessageComponentInterface;
+use Ratchet\ConnectionInterface;
+use Ratchet\Server\IoServer;
+use Ratchet\Http\HttpServer;
+use Ratchet\WebSocket\WsServer;
+
+class WebSocketServer implements MessageComponentInterface {
+    protected $clients;
+    protected $pdo;
+
+    public function __construct() {
+        $this->clients = new \SplObjectStorage;
+
+        // 連接到資料庫
+        $dsn = 'mysql:host=localhost;dbname=arduino1;charset=utf8';
+        $username = 'root';
+        $password = '';
+
+        try {
+            $this->pdo = new PDO($dsn, $username, $password);
+            $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            echo "Connected to the database\n";
+        } catch (PDOException $e) {
+            echo "Failed to connect to the database: " . $e->getMessage() . "\n";
+            exit;
+        }
+    }
+
+    public function onOpen(ConnectionInterface $conn) {
+        $this->clients->attach($conn);
+        echo "New client connected: {$conn->resourceId}\n";
+    }
+
+    public function onMessage(ConnectionInterface $from, $message) {
+        echo "Received message from client {$from->resourceId}: {$message}\n";
+
+        // 解析收到的資料
+        $data = explode(',', $message);
+        $accX = $data[0];
+        $accY = $data[1];
+        $accZ = $data[2];
+
+        // 將資料存儲到資料庫
+        try {
+            $stmt = $this->pdo->prepare('INSERT INTO accelerometer_data (accX, accY, accZ) VALUES (?, ?, ?)');
+            $stmt->execute([$accX, $accY, $accZ]);
+            echo "Data inserted into the database\n";
+        } catch (PDOException $e) {
+            echo "Failed to insert data into the database: " . $e->getMessage() . "\n";
+        }
+
+        // 向所有客戶端傳送訊息
+        $response = json_encode(['accX' => $accX, 'accY' => $accY, 'accZ' => $accZ]);
+        foreach ($this->clients as $client) {
+            $client->send($response);
+        }
+    }
+
+    public function onClose(ConnectionInterface $conn) {
+        $this->clients->detach($conn);
+        echo "Client {$conn->resourceId} disconnected\n";
+    }
+
+    public function onError(ConnectionInterface $conn, \Exception $e) {
+        echo "An error occurred on client {$conn->resourceId}: {$e->getMessage()}\n";
+        $conn->close();
+    }
+}
+
+$serverHost = '192.168.0.32';
+$serverPort = 9000;
+
+$server = IoServer::factory(
+    new HttpServer(
+        new WsServer(
+            new WebSocketServer(
+			)
+			   )
+),
+$serverPort,
+$serverHost
+);
+
+echo "Server started at ws://{$serverHost}:{$serverPort}/\n";
+
+$server->run();
+?>

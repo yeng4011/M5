@@ -1,0 +1,44 @@
+<html>
+<head>
+    <title>WebSocket Example</title>
+    <script>
+        var socket = new WebSocket('ws://192.168.0.32:9000/');
+        var accelerationDataElement;
+
+        socket.onopen = function(event) {
+            console.log('Connected to WebSocket server');
+            accelerationDataElement = document.getElementById('accelerationData');
+        };
+
+        socket.onmessage = function(event) {
+            var message = event.data;
+            console.log('Received message from server: ' + message);
+
+            // 解析回傳的資料
+            var data = JSON.parse(message);
+            var accX = parseFloat(data.accX);
+            var accY = parseFloat(data.accY);
+            var accZ = parseFloat(data.accZ);
+
+            // 顯示加速度資料
+            addAccelerationData(accX, accY, accZ);
+        };
+
+        socket.onclose = function(event) {
+            console.log('Disconnected from WebSocket server');
+        };
+
+        function addAccelerationData(accX, accY, accZ) {
+            // 建立新的加速度資料元素
+            var newAccelerationDataElement = document.createElement('p');
+            newAccelerationDataElement.innerHTML = 'Acceleration (X, Y, Z): ' + accX + ', ' + accY + ', ' + accZ;
+
+            // 將新元素追加到加速度資料區域
+            accelerationDataElement.appendChild(newAccelerationDataElement);
+        }
+    </script>
+</head>
+<body>
+    <div id="accelerationData"></div>
+</body>
+</html>

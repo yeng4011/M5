@@ -1,0 +1,62 @@
+#include <M5StickCPlus.h>
+#include <WiFi.h>
+#include <WebSocketsClient.h>
+
+const char* ssid = "A3007";
+const char* password = "79161389";
+const char* serverIP = "192.168.0.32";  
+const int serverPort = 9000;
+
+WebSocketsClient webSocket;
+
+void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
+  switch(type) {
+    case WStype_DISCONNECTED:
+      Serial.println("[WebSocket] Disconnected from server");
+      break;
+    case WStype_CONNECTED:
+      Serial.println("[WebSocket] Connected to server");
+      break;
+    case WStype_TEXT:
+      Serial.print("[WebSocket] Message from server: ");
+      Serial.println((char *)payload);
+      break;
+  }
+}
+
+void setup() {
+  M5.begin();
+  Wire.begin();
+  Serial.begin(115200);
+  
+
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi...");
+  }
+  
+  Serial.println("Connected to WiFi");
+  
+  // 连接到WebSocket服务器
+  webSocket.begin("192.168.0.32", 9000, "/");
+  webSocket.onEvent(webSocketEvent);
+}
+
+void loop() {
+ 
+  webSocket.loop();
+  
+  float accX, accY, accZ;
+  M5.IMU.getAccelData(&accX, &accY, &accZ);
+  
+  // 创建要发送的消息
+  String message = String(accX) + "," + String(accY) + "," + String(accZ);
+  
+  // 发送消息到WebSocket服务器
+  webSocket.sendTXT(message);
+  
+  Serial.println("Data sent to server: " + message);
+  
+  delay(1000); 
+}
