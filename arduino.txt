@@ -38,7 +38,7 @@ void setup() {
   
   Serial.println("Connected to WiFi");
   
-  // 连接到WebSocket服务器
+  // 連接到WebSocket服務器
   webSocket.begin("192.168.0.32", 9000, "/");
   webSocket.onEvent(webSocketEvent);
 }
@@ -50,10 +50,10 @@ void loop() {
   float accX, accY, accZ;
   M5.IMU.getAccelData(&accX, &accY, &accZ);
   
-  // 创建要发送的消息
+  // 創建要發送的消息
   String message = String(accX) + "," + String(accY) + "," + String(accZ);
   
-  // 发送消息到WebSocket服务器
+  // 發送消息到WebSocket服務器
   webSocket.sendTXT(message);
   
   Serial.println("Data sent to server: " + message);
